@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	_, _, _, _, _, err = ssh.ParseKnownHosts([]byte(knownHost))
+	_, _, pubKey, _, _, err := ssh.ParseKnownHosts([]byte(knownHost))
 	if err != nil {
 		logger.Error(yerrors.Wrap(err).Error())
 		return
@@ -79,13 +79,13 @@ func main() {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(privKey),
 		},
-		//HostKeyCallback: ssh.FixedHostKey(pubKey),
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		BannerCallback:  nil,
-		ClientVersion:   "",
-		//HostKeyAlgorithms: []string{
-		//	ssh.KeyAlgoRSASHA512,
-		//},
+		HostKeyCallback: ssh.FixedHostKey(pubKey),
+		//HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		BannerCallback: nil,
+		ClientVersion:  "",
+		HostKeyAlgorithms: []string{
+			ssh.KeyAlgoRSASHA512,
+		},
 		Timeout: 10 * time.Second,
 	}
 
