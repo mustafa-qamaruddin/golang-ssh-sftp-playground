@@ -36,7 +36,6 @@ func main() {
 	}
 
 	portNumber := 22
-	cmd := "hostname"
 
 	privateKeyFile, ok := os.LookupEnv("PRIVATE_KEY_FILE_PATH")
 	if !ok {
@@ -106,13 +105,34 @@ func main() {
 	sess.Stdout = os.Stdout
 	sess.Stderr = os.Stderr
 
-	err = sess.Run(cmd)
+	stdinPipe, err := sess.StdinPipe()
 	if err != nil {
+		logger.Error(yerrors.Wrap(err).Error())
 		return
 	}
 
-	err = sess.Close()
+	err = sess.Shell()
 	if err != nil {
+		logger.Error(yerrors.Wrap(err).Error())
+		return
+	}
+
+	fprintf, err := fmt.Fprintf(stdinPipe, "%s\n%s\n%s\n%s\n", "ls", "pwd", "free -h", "exit 0")
+	if err != nil {
+		logger.Error(yerrors.Wrap(err).Error())
+		return
+	}
+	log.Printf("bytes sent %d", fprintf)
+
+	err = sess.Wait()
+	if err != nil {
+		logger.Error(yerrors.Wrap(err).Error())
+		return
+	}
+
+	err = conn.Close()
+	if err != nil {
+		logger.Error(yerrors.Wrap(err).Error())
 		return
 	}
 }
