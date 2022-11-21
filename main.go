@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/pkg/sftp"
 	"github.com/yext/yerrors"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -96,35 +98,37 @@ func main() {
 		return
 	}
 
-	sess, err := conn.NewSession()
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		logger.Error(yerrors.Wrap(err).Error())
+		return
+	}
+	dirPath := fmt.Sprintf("/home/%s/hello/world", username)
+	err = client.MkdirAll(dirPath)
 	if err != nil {
 		logger.Error(yerrors.Wrap(err).Error())
 		return
 	}
 
-	sess.Stdout = os.Stdout
-	sess.Stderr = os.Stderr
+	filePath := fmt.Sprintf("%s%c%s", dirPath, filepath.Separator, "test.txt")
+	file, err := client.Create(filePath)
+	if err != nil {
+		return
+	}
 
-	stdinPipe, err := sess.StdinPipe()
+	numWritten, err := file.Write([]byte(fmt.Sprintf("this is written from far far away, %s\n\r", username)))
+	if err != nil {
+		return
+	}
+	log.Printf("Written bytes %d to \n %s", numWritten, filePath)
+
+	err = file.Close()
 	if err != nil {
 		logger.Error(yerrors.Wrap(err).Error())
 		return
 	}
 
-	err = sess.Shell()
-	if err != nil {
-		logger.Error(yerrors.Wrap(err).Error())
-		return
-	}
-
-	fprintf, err := fmt.Fprintf(stdinPipe, "%s\n%s\n%s\n%s\n", "ls", "pwd", "free -h", "exit 0")
-	if err != nil {
-		logger.Error(yerrors.Wrap(err).Error())
-		return
-	}
-	log.Printf("bytes sent %d", fprintf)
-
-	err = sess.Wait()
+	err = client.Close()
 	if err != nil {
 		logger.Error(yerrors.Wrap(err).Error())
 		return
